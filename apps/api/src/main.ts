@@ -8,6 +8,10 @@ async function bootstrap() {
 
     configureApp(app);
 
+    app.enableCors({
+        origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
+    });
+
     const swaggerConfig = new DocumentBuilder()
         .setTitle('Video Meetings API')
         .setDescription('API documentation')

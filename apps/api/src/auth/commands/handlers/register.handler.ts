@@ -24,7 +24,7 @@ export class RegisterHandler implements ICommandHandler<RegisterCommand> {
             where: { email },
         });
         if (existing) {
-            throw new ConflictException('Email is already registered');
+            throw new ConflictException('Такой email уже зарегистрирован');
         }
 
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
