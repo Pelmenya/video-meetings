@@ -27,5 +27,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
+  },
+  "dependencies": {
+    "@nestjs/platform-express": "^11.0.1"
   }
 }

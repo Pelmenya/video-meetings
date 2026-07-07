@@ -7,9 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm workspaces monorepo (`workspaces: ["apps/web", "apps/api"]`), single root lockfile — do not add per-app lockfiles.
 
 - `apps/web` — Next.js 16 (App Router, TypeScript, Tailwind v4, HeroUI v3). See `apps/web/CLAUDE.md`.
-- `apps/api` — NestJS 11 (TypeScript, Jest). See `apps/api/CLAUDE.md`.
+- `apps/api` — NestJS 11 (TypeScript, Jest, Prisma, CQRS). See `apps/api/CLAUDE.md`.
 
-Both apps are currently at initial scaffold state (framework defaults, no custom domain code yet).
+`apps/web` is at initial scaffold state (framework defaults, no custom domain code yet). `apps/api` has a first domain module (`auth` — register/login, see its `CLAUDE.md`) built with Prisma + CQRS.
 
 ## Commands
 
@@ -34,13 +34,14 @@ To target a single workspace directly: `npm run <script> -w web` or `-w api`.
 
 Credentials come from `.env` (gitignored; copy `.env.example` to start). `docker/pgadmin/servers.json` pre-registers the Postgres connection in pgAdmin (host `postgres`, i.e. the compose service name, not `localhost`) so you only need to enter the DB password on first login — if you change `POSTGRES_USER`/`POSTGRES_DB` in `.env`, update `servers.json` to match or the pre-registered connection will be wrong.
 
-No ORM/driver is wired into `apps/api` yet — this is just the database service, not application code.
+`apps/api` connects via Prisma using its own `apps/api/.env` (`DATABASE_URL`, gitignored; copy `apps/api/.env.example`) — see `apps/api/CLAUDE.md` for schema/migration details.
 
 ## Architecture notes
 
 - `apps/web/next.config.ts` sets `turbopack.root` to the monorepo root explicitly. Do not point it at `apps/web` itself — Next.js/Turbopack cannot resolve packages hoisted to the root `node_modules` by npm workspaces if the root is scoped to the app directory.
 - `.agents/skills/` holds agent skills installed via `npx skills add <repo> --skill <name>` (canonical files; symlinked into `.claude/skills/` for Claude Code). Currently installed: `heroui-react`, `heroui-migration`, `heroui-native` (HeroUI v3), `vercel-react-best-practices` (React/Next.js perf), `nestjs-best-practices` (NestJS architecture), `git-commit`, `requesting-code-review`. Consult the relevant skill's `SKILL.md` before writing HeroUI/React/NestJS code — e.g. HeroUI v3's API (no provider, compound components, `variant` prop) differs from v2/NextUI patterns that may appear in training data or search results.
 - `.claude/settings.json` (committed, team-wide) runs a `PostToolUse` hook on `Write|Edit` that auto-formats the touched file with that workspace's local `prettier` (`apps/web` or `apps/api`, matched by path) right after Claude Code edits it. Both apps share the same `.prettierrc` shape (`singleQuote: true`, `trailingComma: "all"`, `tabWidth: 4`) — keep them in sync if you change one. The hook resolves the binary via `npx --no-install` rather than a hardcoded `node_modules/.bin` path, since npm workspaces hoisting can move where the binary physically lives between installs.
+- Root `package.json` declares `@nestjs/platform-express` directly as a root dependency (not just inside `apps/api`). Without it, npm's workspace hoisting nests `platform-express` (and the `@nestjs/cli`/`schematics`/`testing` cluster) under `apps/api/node_modules` while `@nestjs/core` gets hoisted to the root `node_modules` — `@nestjs/core`'s own driver auto-loader then can't find `platform-express` (it resolves relative to its own hoisted location, not `apps/api`), so `NestFactory.create()` fails at runtime with "No driver (HTTP) has been selected" even though it looks installed and `apps/api`'s Jest e2e tests pass (Jest happens to load `@nestjs/testing` from the nested copy, which finds `platform-express` as a sibling). If a fresh `npm install` ever regresses this, forcing `@nestjs/platform-express` to hoist to root is the fix — check `docker ps`/`node dist/main.js` boots cleanly, not just that tests pass, since this failure mode doesn't show up in Jest.
 
 ## Keeping documentation current
 
