@@ -23,6 +23,10 @@ yarn-error.log*
 # misc
 .DS_Store
 *.pem
+__pycache__/
+
+# playwright mcp output (screenshots, traces from browser-driven verification)
+.playwright-mcp/
 
 # claude code local settings
 .claude/settings.local.json
