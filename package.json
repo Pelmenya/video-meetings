@@ -18,7 +18,9 @@
     "lint": "npm run lint -w web && npm run lint -w api",
     "lint:web": "npm run lint -w web",
     "lint:api": "npm run lint -w api",
-    "format": "npm run format -w api"
+    "format": "npm run format -w web && npm run format -w api",
+    "format:web": "npm run format -w web",
+    "format:api": "npm run format -w api"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
