@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# next.js
+apps/web/.next/
+apps/web/out/
+
+# nest.js
+apps/api/dist/
+
+# testing
+apps/api/coverage/
+
+# env
+.env
+.env*.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# misc
+.DS_Store
+*.pem
+
+# claude code local settings
+.claude/settings.local.json
