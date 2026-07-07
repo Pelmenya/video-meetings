@@ -14,5 +14,32 @@ model User {
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
+    hostedMeetings        Meeting[] @relation("HostedMeetings")
+    participatingMeetings Meeting[] @relation("MeetingParticipants")
+
     @@map("users")
+}
+
+enum MeetingStatus {
+    SCHEDULED
+    ONGOING
+    ENDED
+    CANCELLED
+}
+
+model Meeting {
+    id     String        @id @default(uuid())
+    title  String
+    date   DateTime
+    status MeetingStatus @default(SCHEDULED)
+
+    hostId String
+    host   User   @relation("HostedMeetings", fields: [hostId], references: [id])
+
+    participants User[] @relation("MeetingParticipants")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("meetings")
 }

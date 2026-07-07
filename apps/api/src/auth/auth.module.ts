@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { CommandHandlers } from './commands/handlers';
 import { EventHandlers } from './events/handlers';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { TokenService } from './token.service';
 
 @Module({
@@ -25,6 +26,12 @@ import { TokenService } from './token.service';
         }),
     ],
     controllers: [AuthController],
-    providers: [TokenService, ...CommandHandlers, ...EventHandlers],
+    providers: [
+        TokenService,
+        JwtAuthGuard,
+        ...CommandHandlers,
+        ...EventHandlers,
+    ],
+    exports: [JwtModule, JwtAuthGuard],
 })
 export class AuthModule {}
