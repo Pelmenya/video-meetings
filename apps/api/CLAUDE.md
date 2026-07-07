@@ -34,24 +34,42 @@ Standard Nest CLI scaffold (`nest-cli.json`, `sourceRoot: src`): `src/main.ts` b
 
 Swagger/OpenAPI is served at `/docs` (`SwaggerModule.setup('docs', ...)` in `main.ts`), generated from DTOs annotated with `@nestjs/swagger`'s `@ApiProperty`.
 
+**Swagger documentation is mandatory for every HTTP endpoint** — not optional, not a follow-up. When adding or changing a controller route:
+- `@ApiTags('<resource>')` on the controller.
+- `@ApiBearerAuth()` on the controller (or the individual route) whenever it sits behind `JwtAuthGuard`.
+- A response decorator on every route matching its actual status code: `@ApiCreatedResponse({ type: ... })` for a `201` (e.g. `POST`), `@ApiOkResponse({ type: ... })` for a `200`, `@ApiNoContentResponse()` for a `204` (e.g. `DELETE`) — don't default to `@ApiOkResponse` for routes that don't actually return `200`.
+- Every request/response DTO field annotated with `@ApiProperty()` (or `@ApiPropertyOptional()`-equivalent via `required: false` for optional fields), matching its `class-validator` decorators.
+
+Treat an undocumented or mis-documented (wrong status code, missing DTO type) endpoint the same as a bug — fix it in the same change that adds or touches the route, not later.
+
 - `src/prisma/` — `PrismaModule` (`@Global()`) + `PrismaService` (extends `PrismaClient`, connects/disconnects on module init/destroy). Inject `PrismaService` anywhere; no need to re-import `PrismaModule` per feature module.
-- `src/auth/` — first domain module, built CQRS-style with `@nestjs/cqrs`:
-    - `auth.controller.ts` only dispatches `CommandBus.execute(...)`; it has no business logic.
-    - `commands/impl/*.command.ts` — `RegisterCommand`/`LoginCommand`, each extends `@nestjs/cqrs`'s `Command<AuthResponseDto>` (needed for `CommandBus.execute()` to infer the correct return type instead of `unknown`).
-    - `commands/handlers/*.handler.ts` — one `@CommandHandler` per command, does the actual Prisma/bcrypt/JWT work; `commands/handlers/index.ts` exports the `CommandHandlers` array registered as module providers.
-    - `events/impl/user-registered.event.ts` + `events/handlers/user-registered.handler.ts` — `RegisterHandler` publishes `UserRegisteredEvent` via `EventBus` after creating the user; the handler just logs it today, but is the extension point for side effects (welcome email, analytics, etc.) that shouldn't block the register response.
-    - `token.service.ts` — thin `TokenService.buildToken(userId, email)` shared by both handlers so JWT-signing isn't duplicated.
-    - `dto/` — `RegisterDto`/`LoginDto` (class-validator: `@IsEmail`, `@IsString`, `@MinLength`) and `AuthResponseDto` (Swagger response shape, `{ accessToken }`).
-- New feature modules should follow the same command/handler/event split once they have more than trivial logic; simple CRUD-only modules can stay a plain controller+service if CQRS would be pure ceremony — use judgment per module rather than forcing every module through CommandBus.
+- `src/auth/` — register/login + the shared JWT auth guard (see below).
+- `src/meetings/` — CRUD for meetings (host + participants), authorization example (403 vs 404) for the CQRS pattern below.
 
 New modules in general still follow Nest's module/controller/service convention (colocated `.spec.ts` for unit tests, `test/*.e2e-spec.ts` for e2e).
 
+## CQRS pattern (`@nestjs/cqrs`)
+
+`auth` and `meetings` both follow this shape; new modules should too once they have more than trivial logic. A simple CRUD-only module can stay a plain controller+service if CQRS would be pure ceremony — use judgment rather than forcing every module through `CommandBus`.
+
+- **Controllers dispatch only** — no business logic. A controller method builds a Command/Query object and returns `this.commandBus.execute(...)` or `this.queryBus.execute(...)`. See `auth.controller.ts` / `meetings.controller.ts`.
+- **Commands** (writes) live in `commands/impl/*.command.ts`. Each extends `@nestjs/cqrs`'s `Command<ResponseDto>` — the generic is what makes `CommandBus.execute()` infer the real return type instead of `unknown`. Constructor args are the plain data the handler needs (e.g. `CreateMeetingCommand(hostId, title, date, participantIds)`); nothing Nest-specific goes on the command itself.
+- **Queries** (reads) mirror commands under `queries/impl/*.query.ts`, extending `Query<ResponseDto>`, dispatched via `QueryBus.execute(...)`. Use a query instead of a command for anything that doesn't mutate state (`GetMeetingsQuery`, `GetMeetingByIdQuery`) — keeps read/write intent explicit even though both currently hit Prisma directly rather than separate read models.
+- **Handlers** do the actual work (Prisma calls, hashing, token building, authorization checks) — one `@CommandHandler(XCommand)` / `@QueryHandler(XQuery)` class per command/query, each in `commands/handlers/*.handler.ts` or `queries/handlers/*.handler.ts`. Each directory's `index.ts` exports a flat array (`CommandHandlers`, `MeetingCommandHandlers`, `MeetingQueryHandlers`, ...) that the module registers under `providers` alongside `CqrsModule` in `imports`. Nest resolves `@CommandHandler`/`@QueryHandler` decorators from that providers list, not from a separate registration step.
+- **Events** are for side effects that shouldn't block the primary response — `events/impl/*.event.ts` (plain data classes) + `events/handlers/*.handler.ts` (`@EventsHandler`), published from inside a command handler via `EventBus.publish(new XEvent(...))` after the main write succeeds. `auth`'s `RegisterHandler` publishes `UserRegisteredEvent` this way (handler just logs today; it's the extension point for a welcome email, analytics, etc. later). Not every command needs an event — add one when something should react to the write without living in the handler itself.
+- **Cross-request concerns don't belong in commands/queries.** Authentication (who is calling) is a guard (`JwtAuthGuard`, see below); authorization that depends on loaded data (e.g. "is this user the meeting's host or just a participant?") lives in the handler, via a shared helper (`meetings/meeting-access.ts`'s `assertHostOrParticipant`/`assertHost`) rather than duplicated per handler. `meetings`' rule of thumb: check `assertHostOrParticipant` first (unrelated users get 404, not leaking that the resource exists), then `assertHost` for mutating actions (a related-but-non-host participant gets 403, since they already know it exists).
+- **DTO/mapper split**: request shape lives in `dto/*.dto.ts` (class-validator + `@ApiProperty`), the Prisma-row-to-response-shape conversion lives in a small mapper (`meetings/meeting.mapper.ts`'s `toMeetingResponse`) rather than inline in every handler — keeps the `include`/`select` shape (`MEETING_WITH_PARTICIPANTS`) consistent across create/update/get handlers.
+
+### Shared JWT auth guard
+
+`src/auth/guards/jwt-auth.guard.ts` (`JwtAuthGuard`) verifies the `Authorization: Bearer <token>` header directly via the existing `JwtService` (`jwtService.verifyAsync`) — there's no `@nestjs/passport`/`passport-jwt` in this project; adding that dependency wasn't worth it for one guard. On success it stamps `request.user = { userId, email }`; `src/auth/decorators/current-user.decorator.ts`'s `@CurrentUser()` param decorator reads it back out. `AuthModule` exports both `JwtModule` and `JwtAuthGuard` so other feature modules (e.g. `MeetingsModule`) can `imports: [AuthModule]` and use `@UseGuards(JwtAuthGuard)` + `@CurrentUser()` without re-registering JWT config. Apply the guard at the controller level (`@UseGuards(JwtAuthGuard)` above `@Controller(...)`) unless a route genuinely needs to be public.
+
 ## Database (Prisma)
 
-- Schema: `prisma/schema.prisma` (currently just `User { id, email (unique), password, createdAt, updatedAt }`, mapped to table `users`).
+- Schema: `prisma/schema.prisma` — `User { id, email (unique), password, createdAt, updatedAt }` (table `users`) and `Meeting { id, title, date, status (MeetingStatus enum: SCHEDULED/ONGOING/ENDED/CANCELLED, default SCHEDULED), hostId, createdAt, updatedAt }` (table `meetings`), with `hostId` -> `User` (`onDelete` default `Restrict`) and an implicit many-to-many `participants: User[]` <-> `Meeting[]`.
 - `apps/api/.env` (gitignored; copy `.env.example`) needs `DATABASE_URL` (points at the root `docker-compose.yml` Postgres — host `localhost`, port `5435`, matching the root `.env`'s `POSTGRES_*` values) plus `JWT_SECRET` and `JWT_EXPIRES_IN` (seconds — `@nestjs/jwt`'s `signOptions.expiresIn` wants `number | ms.StringValue`, not an arbitrary string, so keep this numeric).
-- After changing `schema.prisma`: `npx prisma migrate dev --name <description>` (applies to the dev Postgres from `npm run db:up` and regenerates the client). `npx prisma generate` alone is enough after a fresh `npm install` wipes `node_modules` (the generated client lives under `node_modules/@prisma/client` and doesn't survive a clean reinstall).
-- e2e tests (`test/auth.e2e-spec.ts`) run against the real dev Postgres, not a mock — isolation comes from generating a unique email per test (`randomUUID()`-based), not from resetting the database between runs.
+- After changing `schema.prisma`: `npx prisma migrate dev --name <description>` (applies to the dev Postgres from `npm run db:up` and regenerates the client). `npx prisma generate` alone is enough after a fresh `npm install` wipes `node_modules` (the generated client lives under `node_modules/@prisma/client` and doesn't survive a clean reinstall). On Windows, a stray `node dist/main.js` (or any process with the old Prisma client loaded) can hold the generated query-engine `.dll.node` locked, making `generate` fail with `EPERM: operation not permitted, rename ...`; stop that process first.
+- e2e tests (`test/auth.e2e-spec.ts`, `test/meetings.e2e-spec.ts`) run against the real dev Postgres, not a mock — isolation comes from generating a unique email per test (`randomUUID()`-based) rather than resetting the database between runs, so registering a throwaway user via `POST /auth/register` is the standard way to get an `accessToken` (and, by decoding its JWT payload, a `userId`) for an authenticated request in any new e2e spec.
 
 ## Formatting
 

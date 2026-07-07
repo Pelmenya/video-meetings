@@ -9,7 +9,11 @@ npm workspaces monorepo (`workspaces: ["apps/web", "apps/api"]`), single root lo
 - `apps/web` — Next.js 16 (App Router, TypeScript, Tailwind v4, HeroUI v3). See `apps/web/CLAUDE.md`.
 - `apps/api` — NestJS 11 (TypeScript, Jest, Prisma, CQRS). See `apps/api/CLAUDE.md`.
 
-`apps/web` is at initial scaffold state (framework defaults, no custom domain code yet). `apps/api` has a first domain module (`auth` — register/login, see its `CLAUDE.md`) built with Prisma + CQRS.
+`apps/web` is at initial scaffold state (framework defaults, no custom domain code yet). `apps/api` has two domain modules built with Prisma + CQRS: `auth` (register/login) and `meetings` (CRUD, host + participants, JWT-guarded) — see its `CLAUDE.md` for the CQRS pattern both follow.
+
+## Coding conventions
+
+**No `any`, in either app.** `@typescript-eslint/no-explicit-any` is an error (not a warning) in both `apps/web` (default from `eslint-config-next`'s `typescript-eslint.configs.recommended`) and `apps/api` (`apps/api/eslint.config.mjs` explicitly sets it to `'error'` — it shipped `'off'` from the Nest CLI scaffold, flip it back to `'error'` if a future scaffold regenerates that file). If a type is genuinely unknown, use `unknown` and narrow it, not `any`; for Prisma/CQRS payloads, prefer the generated Prisma types or a `Prisma.validator`-derived type (see `apps/api/CLAUDE.md`'s CQRS section) over widening to `any`.
 
 ## Commands
 
