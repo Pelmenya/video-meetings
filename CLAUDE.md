@@ -40,6 +40,10 @@ Credentials come from `.env` (gitignored; copy `.env.example` to start). `docker
 
 `apps/api` connects via Prisma using its own `apps/api/.env` (`DATABASE_URL`, gitignored; copy `apps/api/.env.example`) — see `apps/api/CLAUDE.md` for schema/migration details.
 
+## MCP servers
+
+`.mcp.json` (committed, team-wide) registers the `playwright` MCP server (`npx -y @playwright/mcp@latest`) so any Claude Code session opened in this repo can drive a real browser against `apps/web` — useful for verifying UI changes end-to-end rather than trusting typecheck/lint alone. Restart Claude Code after this file changes for it to pick up new/changed servers.
+
 ## Architecture notes
 
 - `apps/web/next.config.ts` sets `turbopack.root` to the monorepo root explicitly. Do not point it at `apps/web` itself — Next.js/Turbopack cannot resolve packages hoisted to the root `node_modules` by npm workspaces if the root is scoped to the app directory.
