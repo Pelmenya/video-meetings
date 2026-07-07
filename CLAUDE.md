@@ -9,7 +9,7 @@ npm workspaces monorepo (`workspaces: ["apps/web", "apps/api"]`), single root lo
 - `apps/web` — Next.js 16 (App Router, TypeScript, Tailwind v4, HeroUI v3). See `apps/web/CLAUDE.md`.
 - `apps/api` — NestJS 11 (TypeScript, Jest, Prisma, CQRS). See `apps/api/CLAUDE.md`.
 
-`apps/web` is at initial scaffold state (framework defaults, no custom domain code yet). `apps/api` has two domain modules built with Prisma + CQRS: `auth` (register/login) and `meetings` (CRUD, host + participants, JWT-guarded) — see its `CLAUDE.md` for the CQRS pattern both follow.
+`apps/web` has one domain page so far — `/register` (see `apps/web/CLAUDE.md`'s "API integration" section), calling `apps/api` over `NEXT_PUBLIC_API_URL`. `apps/api` has two domain modules built with Prisma + CQRS: `auth` (register/login) and `meetings` (CRUD, host + participants, JWT-guarded) — see its `CLAUDE.md` for the CQRS pattern both follow.
 
 ## Coding conventions
 

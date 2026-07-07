@@ -1,11 +1,6 @@
 @import 'tailwindcss';
 @import '@heroui/styles';
 
-:root {
-    --background: #ffffff;
-    --foreground: #171717;
-}
-
 @theme inline {
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -13,10 +8,45 @@
     --font-mono: var(--font-geist-mono);
 }
 
+/*
+ * @heroui/styles already defines --background/--foreground (and every other
+ * semantic token) for :root/[data-theme='light'], switching to its dark
+ * values only under [data-theme='dark']. This app has no theme toggle and
+ * follows the OS preference instead, so mirror HeroUI's own dark palette
+ * behind prefers-color-scheme rather than hand-rolling separate values —
+ * redefining just --background/--foreground here previously shadowed
+ * HeroUI's tokens for those two only, leaving components like Card stuck on
+ * the light --surface while text inherited the dark --foreground, making
+ * headings/labels nearly invisible in dark mode.
+ */
 @media (prefers-color-scheme: dark) {
     :root {
-        --background: #0a0a0a;
-        --foreground: #ededed;
+        --background: oklch(12% 0.005 285.823);
+        --foreground: var(--snow);
+        --surface: oklch(0.2103 0.0059 285.89);
+        --surface-foreground: var(--foreground);
+        --surface-secondary: oklch(0.257 0.0037 286.14);
+        --surface-tertiary: oklch(0.2721 0.0024 247.91);
+        --overlay: oklch(0.2103 0.0059 285.89);
+        --overlay-foreground: var(--foreground);
+        --muted: oklch(70.5% 0.015 286.067);
+        --scrollbar: oklch(70.5% 0.015 286.067);
+        --default: oklch(27.4% 0.006 286.033);
+        --default-foreground: var(--snow);
+        --field-background: oklch(0.2103 0.0059 285.89);
+        --field-foreground: var(--foreground);
+        --warning: oklch(0.8203 0.1388 76.34);
+        --warning-foreground: var(--eclipse);
+        --danger: oklch(0.594 0.1967 24.63);
+        --danger-foreground: var(--snow);
+        --segment: oklch(0.3964 0.01 285.93);
+        --segment-foreground: var(--foreground);
+        --border: oklch(28% 0.006 286.033);
+        --separator: oklch(25% 0.006 286.033);
+        --backdrop: rgba(0, 0, 0, 0.6);
+        --surface-shadow: 0 0 0 0 transparent inset;
+        --overlay-shadow: 0 0 1px 0 rgba(255, 255, 255, 0.3) inset;
+        --field-shadow: 0 0 0 0 transparent inset;
     }
 }
 

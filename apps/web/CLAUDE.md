@@ -30,6 +30,29 @@ Run from this directory, or from the repo root with `-w web` (e.g. `npm run dev 
 
 Before implementing or modifying HeroUI components, use the `heroui-react` skill (`.agents/skills/heroui-react/`) to fetch current component docs/source rather than relying on prior knowledge — its `SKILL.md` explicitly documents the v2→v3 breaking changes and includes scripts (`get_component_docs.mjs`, `get_source.mjs`, `get_styles.mjs`, `get_theme.mjs`) for pulling authoritative component info.
 
+**Don't redeclare `--background`/`--foreground` in `globals.css`.** HeroUI v3 already owns those exact CSS variable names (plus `--surface`, `--surface-foreground`, etc. — run `node .agents/skills/heroui-react/scripts/get_theme.mjs` for the full token list), switching their values via `[data-theme='dark']`, not `prefers-color-scheme`. The original create-next-app boilerplate redeclared `--background`/`--foreground` under `:root` and its own `@media (prefers-color-scheme: dark)` block — that shadowed only those two HeroUI tokens, so components inherited a dark `--foreground` while `--surface` (Card's background) stayed on its light value, making text nearly invisible on cards in dark mode. Since this app has no theme toggle and follows the OS preference, `globals.css` instead mirrors HeroUI's whole `[data-theme='dark']` token block behind `@media (prefers-color-scheme: dark) { :root { ... } }` — keep it in sync with `get_theme.mjs`'s output if HeroUI ships new tokens.
+
+## API integration
+
+`apps/web/.env.local` (gitignored; copy `.env.example`) sets `NEXT_PUBLIC_API_URL` (`http://localhost:3001` in dev — `apps/api` binds there, not `3000`, to avoid colliding with this app's own dev port; see `apps/api/CLAUDE.md`). `src/lib/api.ts` wraps `fetch` calls to the API: `registerUser()` posts to `/auth/register` and throws `ApiError` (status + parsed `message` array from Nest's `ValidationPipe`/`HttpException` JSON body) on a non-2xx response — reuse this pattern (parse `message` as `string | string[]`, wrap in `ApiError`) for future endpoints rather than inlining `fetch` + ad hoc error handling in components.
+
+`src/app/register/page.tsx` is the first example of a form wired to the API: a client component using HeroUI's `Form` + `TextField`/`Input`/`FieldError` compound components, mapping `ApiError.messages` to per-field errors via `Form`'s `validationErrors` prop (falls back to a general error message if a server message doesn't match `email`/`пароль` by keyword — the keyword is Russian for the password field since messages are Russian, see "UI language" below). On success it stores `accessToken` in `localStorage` and redirects with `next/navigation`'s `useRouter`. Follow this shape (client component + `lib/api.ts` helper + `validationErrors` mapping) for other auth-gated forms rather than introducing a form library.
+
+Set `validationBehavior="aria"` on `Form` for any new form, not the (React Aria) default `"native"`: `"native"` surfaces the browser's own constraint-validation messages (localized to the visitor's OS/browser language, not this app's), and blocks submission with a native popup instead of `FieldError`. `"aria"` lets each `TextField`'s own `validate` function supply the message text (see `register/page.tsx`'s email/password `validate` props for the pattern) and still auto-focuses the first invalid field on submit.
+
+## UI language
+
+All user-facing text — labels, placeholders, button text, client-side `validate` messages, `aria-label`s — is Russian (`apps/web/src/app/layout.tsx` sets `lang="ru"`, and the Geist font subsets include `cyrillic` for this reason; don't drop that subset). Server-side validation messages must match: see `apps/api/CLAUDE.md`'s note that `class-validator` decorators and thrown exceptions need an explicit Russian `message`, since `ApiError.messages` renders straight into this UI — an English default (e.g. class-validator's un-overridden `email must be an email`) would show up mixed in next to Russian labels.
+
+## Verifying frontend changes
+
+A frontend change is not done until both of these have run, not just typecheck/lint/tests:
+
+1. **Visually test it in a real browser via the `playwright` MCP server** (`.mcp.json`, see root `CLAUDE.md`) — navigate to the affected page(s), exercise the actual change (not just the happy path: empty/invalid submits, error states, loading states), and check both light and dark mode (`page.emulateMedia({ colorScheme: ... })`) since HeroUI's dark tokens only kick in under `prefers-color-scheme` here (see the HeroUI v3 note above) and light-mode-only testing has silently missed contrast regressions before.
+2. **Run the change past the `ui-ux-pro-max` skill** — at minimum `--domain ux` for the relevant area (forms, accessibility, navigation, etc.) and, for HeroUI-specific questions, cross-check against `heroui-react`'s `get_theme.mjs`/`get_component_docs.mjs`. Treat High/Critical-severity findings as required fixes, not suggestions.
+
+Report what you actually observed (screenshots/contrast numbers/console output), not just "typecheck passes" — a passing build does not mean the UI renders or reads correctly.
+
 ## Turbopack root
 
 `next.config.ts` sets `turbopack.root` to the monorepo root (two levels up), not to `apps/web`. This is required because dependencies are hoisted to the root `node_modules` by npm workspaces; scoping the Turbopack root to this app directory breaks module resolution (e.g. `react/jsx-runtime` fails to resolve).

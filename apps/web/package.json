@@ -10,6 +10,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
   },
   "dependencies": {
+    "@gravity-ui/icons": "^2.20.0",
     "@heroui/react": "^3.2.2",
     "@heroui/styles": "^3.2.2",
     "next": "16.2.10",
