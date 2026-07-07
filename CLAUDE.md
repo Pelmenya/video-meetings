@@ -21,9 +21,20 @@ npm run build           # build both (web then api)
 npm run start           # run both in production mode
 npm run lint            # lint both (next lint / eslint --fix)
 npm run format          # prettier --write on both apps
+npm run db:up           # start local Postgres + pgAdmin (docker compose)
+npm run db:down         # stop them
+npm run db:logs         # tail postgres/pgadmin container logs
 ```
 
 To target a single workspace directly: `npm run <script> -w web` or `-w api`.
+
+## Local database
+
+`docker-compose.yml` at the repo root runs Postgres 17 (host port `5435`, container `video-meetings-postgres`) and pgAdmin (host port `5050`, container `video-meetings-pgadmin`), both on the `video-meetings-net` network with named volumes so state persists across restarts. Ports were chosen to avoid colliding with other projects' containers on the same dev machine — check `docker ps` before assuming 5432/5433/5434/8090 are free if you ever change these.
+
+Credentials come from `.env` (gitignored; copy `.env.example` to start). `docker/pgadmin/servers.json` pre-registers the Postgres connection in pgAdmin (host `postgres`, i.e. the compose service name, not `localhost`) so you only need to enter the DB password on first login — if you change `POSTGRES_USER`/`POSTGRES_DB` in `.env`, update `servers.json` to match or the pre-registered connection will be wrong.
+
+No ORM/driver is wired into `apps/api` yet — this is just the database service, not application code.
 
 ## Architecture notes
 

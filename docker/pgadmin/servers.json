@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "video-meetings (docker)",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "video_meetings",
+      "Username": "postgres",
+      "SSLMode": "prefer"
+    }
+  }
+}

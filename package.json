@@ -20,7 +20,10 @@
     "lint:api": "npm run lint -w api",
     "format": "npm run format -w web && npm run format -w api",
     "format:web": "npm run format -w web",
-    "format:api": "npm run format -w api"
+    "format:api": "npm run format -w api",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres pgadmin"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
