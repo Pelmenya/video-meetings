@@ -1,3 +1,4 @@
+import { PrismaService } from '../../../prisma/prisma.service';
 import { FindUsersByIdsQuery } from '../impl';
 import { FindUsersByIdsHandler } from './find-users-by-ids.handler';
 
@@ -7,7 +8,7 @@ describe('FindUsersByIdsHandler', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        handler = new FindUsersByIdsHandler(prisma as any);
+        handler = new FindUsersByIdsHandler(prisma as unknown as PrismaService);
     });
 
     it('returns the ids that exist among the requested ids', async () => {

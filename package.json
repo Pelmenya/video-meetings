@@ -27,10 +27,12 @@
     "test:e2e:api": "npm run test:e2e -w api",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "db:logs": "docker compose logs -f postgres pgadmin"
+    "db:logs": "docker compose logs -f postgres pgadmin",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "husky": "^9.1.7"
   },
   "dependencies": {
     "@nestjs/platform-express": "^11.0.1"

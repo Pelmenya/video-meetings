@@ -1,5 +1,7 @@
 import { ConflictException } from '@nestjs/common';
+import { EventBus } from '@nestjs/cqrs';
 import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateUserCommand } from '../impl';
 import { CreateUserHandler } from './create-user.handler';
 
@@ -17,7 +19,10 @@ describe('CreateUserHandler', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        handler = new CreateUserHandler(prisma as any, eventBus as any);
+        handler = new CreateUserHandler(
+            prisma as unknown as PrismaService,
+            eventBus as unknown as EventBus,
+        );
     });
 
     it('creates a user with a hashed password and publishes UserRegisteredEvent', async () => {
@@ -42,8 +47,8 @@ describe('CreateUserHandler', () => {
         expect(result).toEqual({
             id: 'user-1',
             email: 'user@example.com',
-            createdAt: expect.any(Date),
-            updatedAt: expect.any(Date),
+            createdAt: expect.any(Date) as Date,
+            updatedAt: expect.any(Date) as Date,
         });
         expect(result).not.toHaveProperty('password');
     });

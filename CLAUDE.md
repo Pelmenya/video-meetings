@@ -42,6 +42,10 @@ Credentials come from `.env` (gitignored; copy `.env.example` to start). `docker
 
 `apps/api` connects via Prisma using its own `apps/api/.env` (`DATABASE_URL`, gitignored; copy `apps/api/.env.example`) — see `apps/api/CLAUDE.md` for schema/migration details.
 
+## Git hooks
+
+Husky (root devDependency, `prepare` script) manages a `pre-commit` hook at `.husky/pre-commit` that runs `npm run lint`, then `npm run test`, then `npm run test:e2e` before every commit — a commit is blocked if any of the three fails. Hooks aren't reinstalled automatically after cloning until `npm install` runs at the repo root (that's what triggers `prepare`). The e2e step needs the local Postgres up (`npm run db:up`) exactly like running it manually (see `apps/api/CLAUDE.md`) — if the DB isn't running, every commit fails on a connection error, not a real test failure. If a commit needs to bypass the hook in a genuine emergency, that's a `git commit --no-verify` call for the user to make explicitly, not something to reach for by default.
+
 ## MCP servers
 
 `.mcp.json` (committed, team-wide) registers the `playwright` MCP server (`npx -y @playwright/mcp@latest`) so any Claude Code session opened in this repo can drive a real browser against `apps/web` — useful for verifying UI changes end-to-end rather than trusting typecheck/lint alone. Restart Claude Code after this file changes for it to pick up new/changed servers.

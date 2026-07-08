@@ -1,4 +1,5 @@
 import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { VerifyUserCredentialsQuery } from '../impl';
 import { VerifyUserCredentialsHandler } from './verify-user-credentials.handler';
 
@@ -10,7 +11,9 @@ describe('VerifyUserCredentialsHandler', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        handler = new VerifyUserCredentialsHandler(prisma as any);
+        handler = new VerifyUserCredentialsHandler(
+            prisma as unknown as PrismaService,
+        );
     });
 
     it('returns the safe user when credentials are valid', async () => {
