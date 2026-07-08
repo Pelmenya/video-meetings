@@ -15,13 +15,12 @@ import {
     TextField,
 } from '@heroui/react';
 import { linkVariants } from '@heroui/styles';
-import { ApiError, registerUser } from '@/lib/api';
-
-const linkSlots = linkVariants();
+import { ApiError, loginUser } from '@/lib/api';
 
 const EMAIL_PATTERN = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+const linkSlots = linkVariants();
 
-export default function RegisterPage() {
+export default function LoginPage() {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -50,7 +49,7 @@ export default function RegisterPage() {
 
         setIsPending(true);
         try {
-            const { accessToken } = await registerUser(email, password);
+            const { accessToken } = await loginUser(email, password);
             localStorage.setItem('accessToken', accessToken);
             router.push('/');
         } catch (error) {
@@ -84,13 +83,12 @@ export default function RegisterPage() {
 
     return (
         <main className="flex min-h-full flex-1 items-center justify-center p-6">
-            <h1 className="sr-only">Регистрация</h1>
+            <h1 className="sr-only">Вход</h1>
             <Card className="w-full max-w-md">
                 <Card.Header>
-                    <Card.Title>Создайте аккаунт</Card.Title>
+                    <Card.Title>Вход в аккаунт</Card.Title>
                     <Card.Description>
-                        Зарегистрируйтесь по email и паролю, чтобы начать
-                        планировать встречи.
+                        Войдите по email и паролю, чтобы продолжить.
                     </Card.Description>
                 </Card.Header>
                 <Form
@@ -131,7 +129,6 @@ export default function RegisterPage() {
                             </TextField>
                             <TextField
                                 isRequired
-                                minLength={8}
                                 name="password"
                                 onBlur={() => touch('password')}
                                 validate={(value) => {
@@ -144,17 +141,14 @@ export default function RegisterPage() {
                                     if (!value) {
                                         return 'Введите пароль';
                                     }
-                                    if (value.length < 8) {
-                                        return 'Пароль должен содержать минимум 8 символов';
-                                    }
                                     return null;
                                 }}
                             >
                                 <Label>Пароль</Label>
                                 <InputGroup variant="secondary">
                                     <InputGroup.Input
-                                        autoComplete="new-password"
-                                        placeholder="Минимум 8 символов"
+                                        autoComplete="current-password"
+                                        placeholder="Введите пароль"
                                         type={
                                             isPasswordVisible
                                                 ? 'text'
@@ -201,17 +195,15 @@ export default function RegisterPage() {
                             isPending={isPending}
                             type="submit"
                         >
-                            {isPending
-                                ? 'Создание аккаунта...'
-                                : 'Создать аккаунт'}
+                            {isPending ? 'Вход...' : 'Войти'}
                         </Button>
                         <p className="text-muted text-center text-sm">
-                            Уже есть аккаунт?{' '}
+                            Нет аккаунта?{' '}
                             <NextLink
                                 className={linkSlots.base()}
-                                href="/login"
+                                href="/register"
                             >
-                                Войти
+                                Зарегистрироваться
                             </NextLink>
                         </p>
                     </Card.Footer>
