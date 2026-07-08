@@ -9,7 +9,7 @@ npm workspaces monorepo (`workspaces: ["apps/web", "apps/api"]`), single root lo
 - `apps/web` — Next.js 16 (App Router, TypeScript, Tailwind v4, HeroUI v3). See `apps/web/CLAUDE.md`.
 - `apps/api` — NestJS 11 (TypeScript, Jest, Prisma, CQRS). See `apps/api/CLAUDE.md`.
 
-`apps/web` has one domain page so far — `/register` (see `apps/web/CLAUDE.md`'s "API integration" section), calling `apps/api` over `NEXT_PUBLIC_API_URL`. `apps/api` has two domain modules built with Prisma + CQRS: `auth` (register/login) and `meetings` (CRUD, host + participants, JWT-guarded) — see its `CLAUDE.md` for the CQRS pattern both follow.
+`apps/web` has one domain page so far — `/register` (see `apps/web/CLAUDE.md`'s "API integration" section), calling `apps/api` over `NEXT_PUBLIC_API_URL`. `apps/api` has three domain modules built with Prisma + CQRS: `auth` (login/register endpoints + JWT guard), `users` (owns all `User` Prisma access — credential creation/verification, no HTTP surface of its own, consumed by `auth` and `meetings` purely via CommandBus/QueryBus), and `meetings` (CRUD, host + participants, JWT-guarded) — see its `CLAUDE.md` for the CQRS pattern all three follow.
 
 ## Coding conventions
 
@@ -25,12 +25,14 @@ npm run build           # build both (web then api)
 npm run start           # run both in production mode
 npm run lint            # lint both (next lint / eslint --fix)
 npm run format          # prettier --write on both apps
+npm run test            # apps/api unit tests (*.spec.ts) — apps/web has no test suite yet
+npm run test:e2e        # apps/api e2e tests (*.e2e-spec.ts), needs `npm run db:up` first
 npm run db:up           # start local Postgres + pgAdmin (docker compose)
 npm run db:down         # stop them
 npm run db:logs         # tail postgres/pgadmin container logs
 ```
 
-To target a single workspace directly: `npm run <script> -w web` or `-w api`.
+To target a single workspace directly: `npm run <script> -w web` or `-w api`. `test`/`test:e2e` only run against `apps/api` today (`test:api`/`test:e2e:api` aliases exist for symmetry with the other dual-workspace scripts) — add `apps/web`'s own script and wire it into the root `test` command once a web test suite exists. See `apps/api/CLAUDE.md`'s Commands section for running a single spec file and the e2e prerequisites in detail.
 
 ## Local database
 

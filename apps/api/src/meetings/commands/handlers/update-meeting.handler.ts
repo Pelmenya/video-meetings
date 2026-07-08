@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { CommandHandler, ICommandHandler, QueryBus } from '@nestjs/cqrs';
 import { Prisma } from '@prisma/client';
+import { FindUsersByIdsQuery } from '../../../users/queries/impl';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { MeetingResponseDto } from '../../dto/meeting-response.dto';
 import { assertHost, assertHostOrParticipant } from '../../meeting-access';
@@ -12,7 +13,10 @@ import { UpdateMeetingCommand } from '../impl';
 
 @CommandHandler(UpdateMeetingCommand)
 export class UpdateMeetingHandler implements ICommandHandler<UpdateMeetingCommand> {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly queryBus: QueryBus,
+    ) {}
 
     async execute(command: UpdateMeetingCommand): Promise<MeetingResponseDto> {
         const { meetingId, requesterId, changes } = command;
@@ -28,11 +32,10 @@ export class UpdateMeetingHandler implements ICommandHandler<UpdateMeetingComman
         assertHost(existing, requesterId);
 
         if (changes.participantIds) {
-            const found = await this.prisma.user.findMany({
-                where: { id: { in: changes.participantIds } },
-                select: { id: true },
-            });
-            if (found.length !== new Set(changes.participantIds).size) {
+            const foundIds = await this.queryBus.execute(
+                new FindUsersByIdsQuery(changes.participantIds),
+            );
+            if (foundIds.length !== new Set(changes.participantIds).size) {
                 throw new BadRequestException(
                     'One or more participants do not exist',
                 );
