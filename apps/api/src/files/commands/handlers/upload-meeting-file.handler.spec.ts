@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QueryBus } from '@nestjs/cqrs';
@@ -9,6 +10,9 @@ import { UploadMeetingFileHandler } from './upload-meeting-file.handler';
 
 jest.mock('../../storage.util', () => ({
     resolveStorageRoot: jest.fn(() => '/tmp/storage'),
+    resolveAbsolutePath: jest.fn(
+        (root: string, relativePath: string) => `${root}/${relativePath}`,
+    ),
     saveFileToDisk: jest.fn(),
 }));
 
@@ -30,6 +34,7 @@ describe('UploadMeetingFileHandler', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        jest.spyOn(fs.promises, 'unlink').mockResolvedValue(undefined);
         (storageUtil.saveFileToDisk as jest.Mock).mockResolvedValue(
             'meeting-1/uuid-note.txt',
         );
@@ -135,7 +140,7 @@ describe('UploadMeetingFileHandler', () => {
     });
 
     it('rejects a file exceeding the max upload size', async () => {
-        process.env.MAX_UPLOAD_SIZE_BYTES = '1000';
+        config.get.mockReturnValue('1000');
 
         await expect(
             handler.execute(
@@ -148,7 +153,25 @@ describe('UploadMeetingFileHandler', () => {
             ),
         ).rejects.toThrow(BadRequestException);
         expect(prisma.meetingFile.create).not.toHaveBeenCalled();
+    });
 
-        delete process.env.MAX_UPLOAD_SIZE_BYTES;
+    it('deletes the just-written file from disk when the DB write fails', async () => {
+        const dbError = new Error('connection lost');
+        prisma.meetingFile.create.mockRejectedValue(dbError);
+
+        await expect(
+            handler.execute(
+                new UploadMeetingFileCommand(
+                    'meeting-1',
+                    'user-1',
+                    MeetingFileKind.ATTACHMENT,
+                    makeFile(),
+                ),
+            ),
+        ).rejects.toThrow(dbError);
+
+        expect(fs.promises.unlink).toHaveBeenCalledWith(
+            '/tmp/storage/meeting-1/uuid-note.txt',
+        );
     });
 });

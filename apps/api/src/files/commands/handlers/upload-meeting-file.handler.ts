@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler, QueryBus } from '@nestjs/cqrs';
@@ -6,7 +7,11 @@ import { GetMeetingByIdQuery } from '../../../meetings/queries/impl';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { MeetingFileResponseDto } from '../../dto/meeting-file-response.dto';
 import { toMeetingFileResponse } from '../../file.mapper';
-import { resolveStorageRoot, saveFileToDisk } from '../../storage.util';
+import {
+    resolveAbsolutePath,
+    resolveStorageRoot,
+    saveFileToDisk,
+} from '../../storage.util';
 import {
     ALLOWED_ATTACHMENT_MIME_TYPES,
     ALLOWED_RECORDING_MIME_TYPES,
@@ -48,7 +53,7 @@ export class UploadMeetingFileHandler implements ICommandHandler<UploadMeetingFi
             );
         }
 
-        const maxUploadSizeBytes = getMaxUploadSizeBytes();
+        const maxUploadSizeBytes = getMaxUploadSizeBytes(this.config);
         if (file.size > maxUploadSizeBytes) {
             throw new BadRequestException(
                 `Размер файла превышает допустимый лимит (${Math.floor(
@@ -65,19 +70,26 @@ export class UploadMeetingFileHandler implements ICommandHandler<UploadMeetingFi
             file.buffer,
         );
 
-        const meetingFile = await this.prisma.meetingFile.create({
-            data: {
-                kind,
-                originalName: file.originalname,
-                mimeType: file.mimetype,
-                sizeBytes: file.size,
-                storagePath,
-                status: 'READY',
-                meeting: { connect: { id: meetingId } },
-                uploader: { connect: { id: uploaderId } },
-            },
-        });
+        try {
+            const meetingFile = await this.prisma.meetingFile.create({
+                data: {
+                    kind,
+                    originalName: file.originalname,
+                    mimeType: file.mimetype,
+                    sizeBytes: file.size,
+                    storagePath,
+                    status: 'READY',
+                    meeting: { connect: { id: meetingId } },
+                    uploader: { connect: { id: uploaderId } },
+                },
+            });
 
-        return toMeetingFileResponse(meetingFile);
+            return toMeetingFileResponse(meetingFile);
+        } catch (error) {
+            await fs.promises
+                .unlink(resolveAbsolutePath(storageRoot, storagePath))
+                .catch(() => undefined);
+            throw error;
+        }
     }
 }

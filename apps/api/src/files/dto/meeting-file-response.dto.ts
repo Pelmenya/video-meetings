@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { MeetingFileKind, MeetingFileStatus } from '@prisma/client';
 
 export class MeetingFileResponseDto {
@@ -26,7 +26,7 @@ export class MeetingFileResponseDto {
     @ApiProperty({ enum: MeetingFileStatus })
     status: MeetingFileStatus;
 
-    @ApiPropertyOptional()
+    @ApiProperty({ nullable: true })
     errorMessage: string | null;
 
     @ApiProperty()

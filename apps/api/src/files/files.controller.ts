@@ -37,7 +37,6 @@ import {
     GetMeetingFileContentQuery,
     GetMeetingFilesQuery,
 } from './queries/impl';
-import { getMaxUploadSizeBytes } from './upload.constants';
 
 @ApiTags('meeting-files')
 @ApiBearerAuth()
@@ -51,11 +50,7 @@ export class FilesController {
 
     @Post()
     @UseFilters(MulterExceptionFilter)
-    @UseInterceptors(
-        FileInterceptor('file', {
-            limits: { fileSize: getMaxUploadSizeBytes() },
-        }),
-    )
+    @UseInterceptors(FileInterceptor('file'))
     @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {
@@ -112,6 +107,7 @@ export class FilesController {
 
         res.setHeader('Accept-Ranges', 'bytes');
         res.setHeader('Content-Type', target.mimeType);
+        res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader(
             'Content-Disposition',
             `inline; filename="${encodeURIComponent(target.originalName)}"`,

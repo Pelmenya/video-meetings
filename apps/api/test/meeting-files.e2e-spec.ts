@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { configureApp } from './../src/app.setup';
+import { DEFAULT_FILE_STORAGE_ROOT } from './../src/files/upload.constants';
 
 /**
  * Contract under test:
@@ -59,6 +62,7 @@ interface MeetingFileBody {
 
 describe('Meeting files (e2e)', () => {
     let app: INestApplication<App>;
+    const createdMeetingIds: string[] = [];
 
     beforeAll(async () => {
         const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -72,6 +76,19 @@ describe('Meeting files (e2e)', () => {
 
     afterAll(async () => {
         await app.close();
+
+        const storageRoot = path.resolve(
+            process.cwd(),
+            process.env.FILE_STORAGE_ROOT ?? DEFAULT_FILE_STORAGE_ROOT,
+        );
+        await Promise.all(
+            createdMeetingIds.map((meetingId) =>
+                fs.promises.rm(path.join(storageRoot, meetingId), {
+                    recursive: true,
+                    force: true,
+                }),
+            ),
+        );
     });
 
     async function registerUser(): Promise<{
@@ -100,7 +117,9 @@ describe('Meeting files (e2e)', () => {
             .send({ title: 'Standup', date: futureDate(), participants })
             .expect(201);
 
-        return (res.body as { id: string }).id;
+        const meetingId = (res.body as { id: string }).id;
+        createdMeetingIds.push(meetingId);
+        return meetingId;
     }
 
     it('lets a participant upload a file, list it, and stream its content back', async () => {
@@ -154,6 +173,65 @@ describe('Meeting files (e2e)', () => {
         expect(rangeRes.headers['content-range']).toBe(
             `bytes 0-4/${Buffer.byteLength(content)}`,
         );
+    });
+
+    it('lets a participant upload a RECORDING (audio/video) file', async () => {
+        const host = await registerUser();
+        const meetingId = await createMeeting(host.accessToken);
+
+        const uploadRes = await request(app.getHttpServer())
+            .post(`/meetings/${meetingId}/files`)
+            .set('Authorization', `Bearer ${host.accessToken}`)
+            .field('kind', 'RECORDING')
+            .attach('file', Buffer.from('fake mp4 bytes'), {
+                filename: 'call.mp4',
+                contentType: 'video/mp4',
+            })
+            .expect(201);
+
+        const uploaded = uploadRes.body as MeetingFileBody;
+        expect(uploaded.kind).toBe('RECORDING');
+        expect(uploaded.mimeType).toBe('video/mp4');
+        expect(uploaded.status).toBe('READY');
+    });
+
+    it('rejects a RECORDING upload with a non audio/video mimetype', async () => {
+        const host = await registerUser();
+        const meetingId = await createMeeting(host.accessToken);
+
+        await request(app.getHttpServer())
+            .post(`/meetings/${meetingId}/files`)
+            .set('Authorization', `Bearer ${host.accessToken}`)
+            .field('kind', 'RECORDING')
+            .attach('file', Buffer.from('hello'), {
+                filename: 'note.txt',
+                contentType: 'text/plain',
+            })
+            .expect(400);
+    });
+
+    it('rejects an upload with a missing or invalid kind field', async () => {
+        const host = await registerUser();
+        const meetingId = await createMeeting(host.accessToken);
+
+        await request(app.getHttpServer())
+            .post(`/meetings/${meetingId}/files`)
+            .set('Authorization', `Bearer ${host.accessToken}`)
+            .attach('file', Buffer.from('hi'), {
+                filename: 'note.txt',
+                contentType: 'text/plain',
+            })
+            .expect(400);
+
+        await request(app.getHttpServer())
+            .post(`/meetings/${meetingId}/files`)
+            .set('Authorization', `Bearer ${host.accessToken}`)
+            .field('kind', 'NOT_A_REAL_KIND')
+            .attach('file', Buffer.from('hi'), {
+                filename: 'note.txt',
+                contentType: 'text/plain',
+            })
+            .expect(400);
     });
 
     it('rejects an upload with a disallowed mimetype', async () => {

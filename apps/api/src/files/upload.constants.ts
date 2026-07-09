@@ -1,3 +1,5 @@
+import { ConfigService } from '@nestjs/config';
+
 export const ALLOWED_RECORDING_MIME_TYPES = [
     'video/mp4',
     'video/webm',
@@ -30,8 +32,8 @@ export const DEFAULT_MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024;
 
 export const DEFAULT_FILE_STORAGE_ROOT = './storage/uploads';
 
-export function getMaxUploadSizeBytes(): number {
-    const raw = process.env.MAX_UPLOAD_SIZE_BYTES;
+export function getMaxUploadSizeBytes(config: ConfigService): number {
+    const raw = config.get<string>('MAX_UPLOAD_SIZE_BYTES');
     const parsed = raw ? parseInt(raw, 10) : NaN;
     return Number.isFinite(parsed) ? parsed : DEFAULT_MAX_UPLOAD_SIZE_BYTES;
 }
