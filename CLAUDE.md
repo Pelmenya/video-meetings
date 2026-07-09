@@ -9,7 +9,7 @@ npm workspaces monorepo (`workspaces: ["apps/web", "apps/api"]`), single root lo
 - `apps/web` — Next.js 16 (App Router, TypeScript, Tailwind v4, HeroUI v3). See `apps/web/CLAUDE.md`.
 - `apps/api` — NestJS 11 (TypeScript, Jest, Prisma, CQRS). See `apps/api/CLAUDE.md`.
 
-`apps/web` has one domain page so far — `/register` (see `apps/web/CLAUDE.md`'s "API integration" section), calling `apps/api` over `NEXT_PUBLIC_API_URL`. `apps/api` has three domain modules built with Prisma + CQRS: `auth` (login/register endpoints + JWT guard), `users` (owns all `User` Prisma access — credential creation/verification, no HTTP surface of its own, consumed by `auth` and `meetings` purely via CommandBus/QueryBus), and `meetings` (CRUD, host + participants, JWT-guarded) — see its `CLAUDE.md` for the CQRS pattern all three follow.
+`apps/web` has two domain pages so far — `/register` and `/login` (see `apps/web/CLAUDE.md`'s "API integration" section) — plus an auth-gated home screen, all calling `apps/api` over `NEXT_PUBLIC_API_URL`. `apps/api` has three domain modules built with Prisma + CQRS: `auth` (login/register endpoints + JWT guard), `users` (owns all `User` Prisma access — credential creation/verification, no HTTP surface of its own, consumed by `auth` and `meetings` purely via CommandBus/QueryBus), and `meetings` (CRUD, host + participants, JWT-guarded) — see its `CLAUDE.md` for the CQRS pattern all three follow.
 
 ## Coding conventions
 
@@ -60,3 +60,7 @@ Husky (root devDependency, `prepare` script) manages a `pre-commit` hook at `.hu
 ## Keeping documentation current
 
 This file and the per-app `CLAUDE.md`s are living documentation, not a one-time snapshot. Whenever a change affects what they describe — scripts, config (`next.config.ts`, `nest-cli.json`, workspaces list), architecture decisions, installed skills/dependencies, or app structure — update the relevant `CLAUDE.md` in the same change, not as separate follow-up. Stale docs actively mislead future work here, so treat an out-of-date `CLAUDE.md` as a bug.
+
+## Screenshots
+
+All screenshots save to /screenshot folder
