@@ -19,11 +19,11 @@
 **Затрагивает:** backend, database
 **Задачи:**
 
-- [ ] Prisma: модель `MeetingFile` (meetingId, uploaderId, kind: RECORDING | ATTACHMENT, originalName, mimeType, sizeBytes, storagePath, status: QUEUED | PROCESSING | READY | ERROR, errorMessage, createdAt/updatedAt) + миграция.
-- [ ] Модуль `files` по CQRS-конвенции проекта: `UploadMeetingFileCommand`/handler (сохраняет файл на диск через multer, создаёт запись в БД), `GetMeetingFilesQuery`/handler (список файлов встречи), маппер ответа.
-- [ ] Эндпоинты под `JwtAuthGuard`, авторизация через `assertHostOrParticipant`: `POST /meetings/:id/files` (multipart upload), `GET /meetings/:id/files` (список), `GET /meetings/:id/files/:fileId/content` (потоковая отдача с поддержкой `Range` для видео/аудио).
-- [ ] Валидация загрузки: allow-list MIME-типов, лимит размера файла, отклонение с понятным русскоязычным сообщением (`400`) при нарушении.
-- [ ] Тесты: unit-тесты handler'ов (в т.ч. отказ доступа не-участнику встречи → 404, отказ по типу/размеру), e2e-тест полного цикла upload → list → content.
+- [x] Prisma: модель `MeetingFile` (meetingId, uploaderId, kind: RECORDING | ATTACHMENT, originalName, mimeType, sizeBytes, storagePath, status: QUEUED | PROCESSING | READY | ERROR, errorMessage, createdAt/updatedAt) + миграция.
+- [x] Модуль `files` по CQRS-конвенции проекта: `UploadMeetingFileCommand`/handler (сохраняет файл на диск через multer, создаёт запись в БД), `GetMeetingFilesQuery`/handler (список файлов встречи), маппер ответа.
+- [x] Эндпоинты под `JwtAuthGuard`, авторизация через `assertHostOrParticipant`: `POST /meetings/:id/files` (multipart upload), `GET /meetings/:id/files` (список), `GET /meetings/:id/files/:fileId/content` (потоковая отдача с поддержкой `Range` для видео/аудио).
+- [x] Валидация загрузки: allow-list MIME-типов, лимит размера файла, отклонение с понятным русскоязычным сообщением (`400`) при нарушении.
+- [x] Тесты: unit-тесты handler'ов (в т.ч. отказ доступа не-участнику встречи → 404, отказ по типу/размеру), e2e-тест полного цикла upload → list → content.
 
 **Когда готова:** Через API можно загрузить файл на встречу (только её участником), получить список файлов встречи и получить содержимое загруженного файла обратно; недопустимый тип/размер отклоняется с понятным сообщением.
 

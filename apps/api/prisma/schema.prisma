@@ -14,8 +14,9 @@ model User {
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    hostedMeetings        Meeting[] @relation("HostedMeetings")
-    participatingMeetings Meeting[] @relation("MeetingParticipants")
+    hostedMeetings        Meeting[]     @relation("HostedMeetings")
+    participatingMeetings Meeting[]     @relation("MeetingParticipants")
+    uploadedFiles         MeetingFile[] @relation("UploadedFiles")
 
     @@map("users")
 }
@@ -37,9 +38,44 @@ model Meeting {
     host   User   @relation("HostedMeetings", fields: [hostId], references: [id])
 
     participants User[] @relation("MeetingParticipants")
+    files        MeetingFile[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
     @@map("meetings")
+}
+
+enum MeetingFileKind {
+    RECORDING
+    ATTACHMENT
+}
+
+enum MeetingFileStatus {
+    QUEUED
+    PROCESSING
+    READY
+    ERROR
+}
+
+model MeetingFile {
+    id           String            @id @default(uuid())
+    kind         MeetingFileKind
+    originalName String
+    mimeType     String
+    sizeBytes    Int
+    storagePath  String
+    status       MeetingFileStatus @default(QUEUED)
+    errorMessage String?
+
+    meetingId String
+    meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+    uploaderId String
+    uploader   User   @relation("UploadedFiles", fields: [uploaderId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("meeting_files")
 }

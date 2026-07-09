@@ -11,6 +11,9 @@ apps/api/dist/
 # testing
 apps/api/coverage/
 
+# local file storage for uploaded meeting files
+apps/api/storage/
+
 # env
 .env
 .env*.local
