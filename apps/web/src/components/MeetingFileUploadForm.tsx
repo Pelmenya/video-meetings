@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Alert,
     Button,
@@ -15,6 +16,7 @@ import {
     type MeetingFile,
     type MeetingFileKind,
 } from '@/lib/api';
+import { formatFileSize } from '@/lib/meeting-format';
 
 interface MeetingFileUploadFormProps {
     accessToken: string;
@@ -22,18 +24,20 @@ interface MeetingFileUploadFormProps {
     onUploaded: (file: MeetingFile) => void;
 }
 
-function formatFileSize(bytes: number): string {
-    const megabytes = bytes / (1024 * 1024);
-    return megabytes >= 1
-        ? `${megabytes.toFixed(1)} МБ`
-        : `${Math.max(1, Math.round(bytes / 1024))} КБ`;
-}
+// Client-side hint only (pre-filters the OS file picker) — the server is the
+// source of truth for what's actually allowed, see apps/api/src/files/upload.constants.ts.
+const ACCEPT_BY_KIND: Record<MeetingFileKind, string> = {
+    RECORDING: 'video/*,audio/*',
+    ATTACHMENT:
+        '.pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.zip,.doc,.docx,.ppt,.pptx,.xls,.xlsx',
+};
 
 export default function MeetingFileUploadForm({
     accessToken,
     meetingId,
     onUploaded,
 }: MeetingFileUploadFormProps) {
+    const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [kind, setKind] = useState<MeetingFileKind>('ATTACHMENT');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -69,6 +73,14 @@ export default function MeetingFileUploadForm({
                 fileInputRef.current.value = '';
             }
         } catch (uploadError) {
+            if (
+                uploadError instanceof ApiError &&
+                uploadError.statusCode === 401
+            ) {
+                localStorage.removeItem('accessToken');
+                router.replace('/login');
+                return;
+            }
             setError(
                 uploadError instanceof ApiError
                     ? uploadError.messages.join(' ')
@@ -109,6 +121,7 @@ export default function MeetingFileUploadForm({
             <div className="flex flex-wrap items-center gap-3">
                 <input
                     ref={fileInputRef}
+                    accept={ACCEPT_BY_KIND[kind]}
                     className="hidden"
                     disabled={isUploading}
                     type="file"
@@ -166,7 +179,7 @@ export default function MeetingFileUploadForm({
                 isPending={isUploading}
                 onPress={() => void handleUpload()}
             >
-                {isUploading ? 'Загрузка...' : 'Загрузить'}
+                {isUploading ? 'Загрузка…' : 'Загрузить'}
             </Button>
         </div>
     );

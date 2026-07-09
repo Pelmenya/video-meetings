@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Chip, Skeleton } from '@heroui/react';
 import {
+    ApiError,
     getMeetingFiles,
     type MeetingFile,
     type MeetingFileKind,
     type MeetingFileStatus,
 } from '@/lib/api';
-import type { ChipColor } from '@/lib/meeting-format';
+import { formatFileSize, type ChipColor } from '@/lib/meeting-format';
 
 interface MeetingFilesListProps {
     accessToken: string;
@@ -37,11 +39,8 @@ const FILE_KIND_LABELS: Record<MeetingFileKind, string> = {
 
 const POLL_INTERVAL_MS = 4000;
 
-function formatFileSize(bytes: number): string {
-    const megabytes = bytes / (1024 * 1024);
-    return megabytes >= 1
-        ? `${megabytes.toFixed(1)} МБ`
-        : `${Math.max(1, Math.round(bytes / 1024))} КБ`;
+function isTerminal(file: MeetingFile): boolean {
+    return file.status === 'READY' || file.status === 'ERROR';
 }
 
 export default function MeetingFilesList({
@@ -49,11 +48,20 @@ export default function MeetingFilesList({
     meetingId,
     refreshSignal,
 }: MeetingFilesListProps) {
+    const router = useRouter();
     const [files, setFiles] = useState<MeetingFile[] | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
+        let intervalId: ReturnType<typeof setInterval> | undefined;
+
+        function stopPolling() {
+            if (intervalId !== undefined) {
+                clearInterval(intervalId);
+                intervalId = undefined;
+            }
+        }
 
         function load() {
             getMeetingFiles(accessToken, meetingId)
@@ -63,22 +71,33 @@ export default function MeetingFilesList({
                     }
                     setFiles(result);
                     setLoadError(null);
-                })
-                .catch(() => {
-                    if (!cancelled) {
-                        setLoadError('Не удалось загрузить список файлов.');
+                    // Nothing left to change until a new upload bumps
+                    // refreshSignal and restarts this effect (and polling).
+                    if (result.every(isTerminal)) {
+                        stopPolling();
                     }
+                })
+                .catch((error: unknown) => {
+                    if (cancelled) {
+                        return;
+                    }
+                    if (error instanceof ApiError && error.statusCode === 401) {
+                        localStorage.removeItem('accessToken');
+                        router.replace('/login');
+                        return;
+                    }
+                    setLoadError('Не удалось загрузить список файлов.');
                 });
         }
 
         load();
-        const intervalId = setInterval(load, POLL_INTERVAL_MS);
+        intervalId = setInterval(load, POLL_INTERVAL_MS);
 
         return () => {
             cancelled = true;
-            clearInterval(intervalId);
+            stopPolling();
         };
-    }, [accessToken, meetingId, refreshSignal]);
+    }, [accessToken, meetingId, refreshSignal, router]);
 
     if (loadError) {
         return (

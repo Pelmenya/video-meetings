@@ -1,11 +1,6 @@
 import type { MeetingStatus } from './api';
 
-export type ChipColor =
-    | 'accent'
-    | 'default'
-    | 'success'
-    | 'warning'
-    | 'danger';
+export type ChipColor = 'accent' | 'default' | 'success' | 'warning' | 'danger';
 
 export const STATUS_LABELS: Record<MeetingStatus, string> = {
     SCHEDULED: 'Запланирована',
@@ -26,6 +21,13 @@ export function formatDate(date: string): string {
         dateStyle: 'medium',
         timeStyle: 'short',
     });
+}
+
+export function formatFileSize(bytes: number): string {
+    const megabytes = bytes / (1024 * 1024);
+    return megabytes >= 1
+        ? `${megabytes.toFixed(1)} МБ`
+        : `${Math.max(1, Math.round(bytes / 1024))} КБ`;
 }
 
 export function pluralize(
