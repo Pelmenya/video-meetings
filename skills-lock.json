@@ -25,6 +25,12 @@
       "skillPath": "skills/heroui-react/SKILL.md",
       "computedHash": "c9e1bb41fbc3cee782faae08bd465ae05cd685a6ed7cc3392464fdf29b3ab467"
     },
+    "issues": {
+      "source": "AlariCode/30-claude-advanced",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/issues/SKILL.md",
+      "computedHash": "44da17a3bf9ed99d6e7784240c4786799f80e15dd432c6e451088496bdcff328"
+    },
     "nestjs-best-practices": {
       "source": "kadajett/agent-nestjs-skills",
       "sourceType": "github",
