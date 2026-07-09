@@ -31,6 +31,12 @@
       "skillPath": "SKILL.md",
       "computedHash": "fff896300fe25d6d2e41161da12a5b05d0d57a8adb2390c72fbb7a72e0d02440"
     },
+    "prd": {
+      "source": "AlariCode/30-claude-advanced",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/prd/SKILL.md",
+      "computedHash": "da08e81bf0ead2a78d940905861e6cf04f6326da4ab423b99ff52ad0a443252d"
+    },
     "requesting-code-review": {
       "source": "obra/superpowers",
       "sourceType": "github",
