@@ -1,38 +1,12 @@
 'use client';
 
+import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button, Card, Chip, Skeleton } from '@heroui/react';
-import {
-    ApiError,
-    getMeetings,
-    type Meeting,
-    type MeetingStatus,
-} from '@/lib/api';
+import { ApiError, getMeetings, type Meeting } from '@/lib/api';
 import { decodeAccessToken } from '@/lib/auth';
-
-type ChipColor = 'accent' | 'default' | 'success' | 'warning' | 'danger';
-
-const STATUS_LABELS: Record<MeetingStatus, string> = {
-    SCHEDULED: 'Запланирована',
-    ONGOING: 'Идёт',
-    ENDED: 'Завершена',
-    CANCELLED: 'Отменена',
-};
-
-const STATUS_COLORS: Record<MeetingStatus, ChipColor> = {
-    SCHEDULED: 'accent',
-    ONGOING: 'success',
-    ENDED: 'default',
-    CANCELLED: 'danger',
-};
-
-function formatDate(date: string) {
-    return new Date(date).toLocaleString('ru-RU', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    });
-}
+import { STATUS_COLORS, STATUS_LABELS, formatDate } from '@/lib/meeting-format';
 
 export default function Home() {
     const router = useRouter();
@@ -144,21 +118,27 @@ export default function Home() {
                     ) : (
                         <ul className="flex flex-col gap-3">
                             {recentMeetings.map((meeting) => (
-                                <li
-                                    key={meeting.id}
-                                    className="border-border flex items-center justify-between gap-4 rounded-lg border p-3"
-                                >
-                                    <div>
-                                        <p className="font-medium">
-                                            {meeting.title}
-                                        </p>
-                                        <p className="text-muted text-sm">
-                                            {formatDate(meeting.date)}
-                                        </p>
-                                    </div>
-                                    <Chip color={STATUS_COLORS[meeting.status]}>
-                                        {STATUS_LABELS[meeting.status]}
-                                    </Chip>
+                                <li key={meeting.id}>
+                                    <NextLink
+                                        href={`/meetings/${meeting.id}`}
+                                        className="border-border hover:bg-surface-secondary flex items-center justify-between gap-4 rounded-lg border p-3 transition-colors"
+                                    >
+                                        <div>
+                                            <p className="font-medium">
+                                                {meeting.title}
+                                            </p>
+                                            <p className="text-muted text-sm">
+                                                {formatDate(meeting.date)}
+                                            </p>
+                                        </div>
+                                        <Chip
+                                            color={
+                                                STATUS_COLORS[meeting.status]
+                                            }
+                                        >
+                                            {STATUS_LABELS[meeting.status]}
+                                        </Chip>
+                                    </NextLink>
                                 </li>
                             ))}
                         </ul>
