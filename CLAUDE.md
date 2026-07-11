@@ -50,6 +50,12 @@ Husky (root devDependency, `prepare` script) manages a `pre-commit` hook at `.hu
 
 `.mcp.json` (committed, team-wide) registers the `playwright` MCP server (`npx -y @playwright/mcp@latest`) so any Claude Code session opened in this repo can drive a real browser against `apps/web` — useful for verifying UI changes end-to-end rather than trusting typecheck/lint alone. Restart Claude Code after this file changes for it to pick up new/changed servers.
 
+## Deployment
+
+`package-lock.json` is committed from a Windows dev machine, so it doesn't record Linux-specific optional-dependency binaries for the Rust-based native addons Tailwind v4 depends on (`lightningcss`, `@tailwindcss/oxide`). A plain `npm install` on a Linux host (e.g. deploying to a VDS) installs fine but silently omits `lightningcss-linux-x64-gnu` and `@tailwindcss/oxide-linux-x64-gnu` — `npm run build -w web` then fails at the `globals.css` import with `Cannot find module '../lightningcss.linux-x64-gnu.node'` (and, once that's patched, the same error for `tailwindcss-oxide.linux-x64-gnu.node`). Fix: `npm install lightningcss-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu --no-save` **in one command** — installing them one at a time lets npm's own extraneous-package pruning (reconciling against the Windows-locked lockfile) remove the one installed in the previous step. This is a one-time step per fresh `node_modules` on a Linux host, not a repo change; regenerating `package-lock.json` on Linux/CI instead of Windows would make it unnecessary but hasn't been done.
+
+apps/web and apps/api have no `Dockerfile` yet — a manual pet-project deploy (Timeweb Cloud VDS, managed via a personal `timeweb` MCP server in local Claude Code scope, not committed to `.mcp.json`) ran both as plain Node processes under systemd (`vm-api.service`: `node dist/main.js`; `vm-web.service`: `next start -p 3000`) rather than in containers, with only Postgres via the root `docker-compose.yml`. A 2GB-RAM VDS has no headroom for `next build`/`nest build` without swap — add a swapfile first on any similarly small box.
+
 ## Architecture notes
 
 - `apps/web/next.config.ts` sets `turbopack.root` to the monorepo root explicitly. Do not point it at `apps/web` itself — Next.js/Turbopack cannot resolve packages hoisted to the root `node_modules` by npm workspaces if the root is scoped to the app directory.
